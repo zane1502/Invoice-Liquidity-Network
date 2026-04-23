@@ -46,6 +46,9 @@ pub enum StorageKey {
     InvoiceFunders(u64), // List of funders for a partially funded invoice
     ApprovedToken(Address),
     TokenList,
+    Admin,
+    FeeRate,
+    MaxDiscountRate,
 }
 
 // ----------------------------------------------------------------

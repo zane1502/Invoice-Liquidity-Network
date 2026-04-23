@@ -23,10 +23,14 @@ impl InvoiceLiquidityContract {
     // ------------------------------------------------------------
     // initialize (multi-token aware)
     // ------------------------------------------------------------
-    pub fn initialize(env: Env, token: Address) -> Result<(), ContractError> {
+    pub fn initialize(env: Env, admin: Address, token: Address) -> Result<(), ContractError> {
         if env.storage().instance().has(&StorageKey::InvoiceCount) {
             return Err(ContractError::Unauthorized);
         }
+
+        env.storage().instance().set(&StorageKey::Admin, &admin);
+        env.storage().instance().set(&StorageKey::FeeRate, &0_u32);
+        env.storage().instance().set(&StorageKey::MaxDiscountRate, &5000_u32);
 
         // approve first token (USDC or default)
         env.storage()
@@ -41,6 +45,43 @@ impl InvoiceLiquidityContract {
             .set(&StorageKey::TokenList, &list);
 
         Ok(())
+    }
+
+    // ------------------------------------------------------------
+    pub fn set_admin(env: Env, new_admin: Address) {
+        let admin: Address = env.storage().instance().get(&StorageKey::Admin).unwrap();
+        admin.require_auth();
+        env.storage().instance().set(&StorageKey::Admin, &new_admin);
+    }
+
+    pub fn update_fee_rate(env: Env, rate: u32) {
+        let admin: Address = env.storage().instance().get(&StorageKey::Admin).unwrap();
+        admin.require_auth();
+        env.storage().instance().set(&StorageKey::FeeRate, &rate);
+    }
+
+    pub fn update_max_discount(env: Env, rate: u32) {
+        let admin: Address = env.storage().instance().get(&StorageKey::Admin).unwrap();
+        admin.require_auth();
+        env.storage().instance().set(&StorageKey::MaxDiscountRate, &rate);
+    }
+
+    pub fn add_token(env: Env, token: Address) {
+        let admin: Address = env.storage().instance().get(&StorageKey::Admin).unwrap();
+        admin.require_auth();
+        env.storage().persistent().set(&StorageKey::ApprovedToken(token.clone()), &true);
+
+        let mut list: Vec<Address> = env.storage().persistent().get(&StorageKey::TokenList).unwrap_or(Vec::new(&env));
+        if !list.contains(&token) {
+            list.push_back(token);
+            env.storage().persistent().set(&StorageKey::TokenList, &list);
+        }
+    }
+
+    pub fn remove_token(env: Env, token: Address) {
+        let admin: Address = env.storage().instance().get(&StorageKey::Admin).unwrap();
+        admin.require_auth();
+        env.storage().persistent().set(&StorageKey::ApprovedToken(token.clone()), &false);
     }
 
     // ------------------------------------------------------------
@@ -61,7 +102,8 @@ impl InvoiceLiquidityContract {
             return Err(ContractError::InvalidAmount);
         }
 
-        if discount_rate == 0 || discount_rate > 5_000 {
+        let max_rate: u32 = env.storage().instance().get(&StorageKey::MaxDiscountRate).unwrap_or(5000);
+        if discount_rate == 0 || discount_rate > max_rate {
             return Err(ContractError::InvalidDiscountRate);
         }
 
