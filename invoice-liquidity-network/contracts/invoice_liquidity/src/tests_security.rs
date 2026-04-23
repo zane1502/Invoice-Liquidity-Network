@@ -57,7 +57,9 @@ fn setup_security() -> TestEnv {
     // Deploy and initialise the ILN contract
     let contract_id = env.register(InvoiceLiquidityContract, ());
     let contract = InvoiceLiquidityContractClient::new(&env, &contract_id);
-    contract.initialize(&usdc_address);
+    
+    let dummy_xlm = Address::generate(&env);
+    contract.initialize(&usdc_admin, &usdc_address, &dummy_xlm);
 
     // Fix ledger timestamp
     let mut ledger_info = env.ledger().get();

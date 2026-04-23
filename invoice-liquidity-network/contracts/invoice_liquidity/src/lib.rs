@@ -3,7 +3,7 @@
 mod errors;
 mod invoice;
 
-use soroban_sdk::{contract, contractimpl, token::Client as TokenClient, Address, Env, Vec};
+use soroban_sdk::{contract, contractimpl, symbol_short, token::Client as TokenClient, Address, Env, Vec};
 
 use errors::ContractError;
 use invoice::{
@@ -23,6 +23,7 @@ impl InvoiceLiquidityContract {
     // ------------------------------------------------------------
     // initialize (multi-token aware)
     // ------------------------------------------------------------
+    pub fn initialize(
         env: Env,
         admin: Address,
         token: Address,
@@ -144,8 +145,9 @@ impl InvoiceLiquidityContract {
 
         save_invoice(&env, &invoice);
 
+        #[allow(deprecated)]
         env.events()
-            .publish((soroban_sdk::symbol_short!("submitted"),), id);
+            .publish((symbol_short!("submitted"),), id);
 
         Ok(id)
     }
@@ -161,17 +163,53 @@ impl InvoiceLiquidityContract {
             return Err(ContractError::BatchTooLarge);
         }
 
+        let mut authenticated_freelancers: Vec<Address> = Vec::new(&env);
         let mut ids = Vec::new(&env);
         for params in invoices.iter() {
-            let id = Self::submit_invoice(
-                env.clone(),
-                params.freelancer,
-                params.payer,
-                params.amount,
-                params.due_date,
-                params.discount_rate,
-                params.token,
-            )?;
+            if !authenticated_freelancers.contains(&params.freelancer) {
+                params.freelancer.require_auth();
+                authenticated_freelancers.push_back(params.freelancer.clone());
+            }
+
+            if params.amount <= 0 {
+                return Err(ContractError::InvalidAmount);
+            }
+
+            let max_rate: u32 = env.storage().instance().get(&StorageKey::MaxDiscountRate).unwrap_or(5000);
+            if params.discount_rate == 0 || params.discount_rate > max_rate {
+                return Err(ContractError::InvalidDiscountRate);
+            }
+
+            let now = env.ledger().timestamp();
+            if params.due_date <= now {
+                return Err(ContractError::InvalidDueDate);
+            }
+
+            if !is_approved_token(&env, &params.token) {
+                return Err(ContractError::Unauthorized);
+            }
+
+            let id = next_invoice_id(&env);
+
+            let invoice = Invoice {
+                id,
+                freelancer: params.freelancer,
+                payer: params.payer,
+                amount: params.amount,
+                due_date: params.due_date,
+                discount_rate: params.discount_rate,
+                status: InvoiceStatus::Pending,
+                funder: None,
+                funded_at: None,
+                amount_funded: 0,
+            };
+
+            save_invoice(&env, &invoice);
+
+            #[allow(deprecated)]
+            env.events()
+                .publish((symbol_short!("submitted"),), id);
+
             ids.push_back(id);
         }
         
@@ -250,8 +288,9 @@ impl InvoiceLiquidityContract {
 
         save_invoice(&env, &invoice);
 
+        #[allow(deprecated)]
         env.events().publish(
-            (soroban_sdk::symbol_short!("funded"),),
+            (symbol_short!("funded"),),
             (invoice_id, funder),
         );
 
@@ -348,8 +387,9 @@ impl InvoiceLiquidityContract {
         set_payer_score(&env, &invoice.payer, current_score + 1);
 
         // Emit event
+        #[allow(deprecated)]
         env.events()
-            .publish((soroban_sdk::symbol_short!("paid"),), invoice_id);
+            .publish((symbol_short!("paid"),), invoice_id);
 
         Ok(())
     }
@@ -468,8 +508,9 @@ impl InvoiceLiquidityContract {
         }
 
         // Emit event
+        #[allow(deprecated)]
         env.events()
-            .publish((soroban_sdk::symbol_short!("defaulted"),), invoice_id);
+            .publish((symbol_short!("defaulted"),), invoice_id);
 
         Ok(())
     }
@@ -518,10 +559,6 @@ impl InvoiceLiquidityContract {
 // ----------------------------------------------------------------
 // TOKEN HELPERS
 // ----------------------------------------------------------------
-
-fn token_client<'a>(env: &'a Env, token: &'a Address) -> TokenClient<'a> {
-    TokenClient::new(env, token)
-}
 
 fn usdc_client<'a>(env: &'a Env) -> TokenClient<'a> {
     let list: Vec<Address> = env
