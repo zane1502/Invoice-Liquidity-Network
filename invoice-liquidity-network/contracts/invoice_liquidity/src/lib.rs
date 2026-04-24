@@ -586,4 +586,5 @@ fn is_approved_token(env: &Env, token: &Address) -> bool {
 // ----------------------------------------------------------------
 
 mod test;
+mod tests_arithmetic;
 mod tests_security;
