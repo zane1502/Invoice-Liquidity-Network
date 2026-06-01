@@ -1,0 +1,17 @@
+{
+  "name": "invoice-liquidity-network",
+  "private": true,
+  "scripts": {
+    "test": "turbo run test",
+    "test:coverage": "turbo run test:coverage",
+    "build": "turbo run build"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.4"
+  },
+  "engines": {
+    "node": ">=18",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.0.0"
+}
