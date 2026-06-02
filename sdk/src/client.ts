@@ -10,12 +10,12 @@ import {
   xdr,
 } from "@stellar/stellar-sdk";
 
+import type { Invoice, InvoiceState } from "@iln/shared";
+
 import type {
   ClaimDefaultParams,
   FundInvoiceParams,
   ILNSdkConfig,
-  Invoice,
-  InvoiceStatus,
   MarkPaidParams,
   RpcServerLike,
   SubmitInvoiceParams,
@@ -337,7 +337,7 @@ export class ILNSdk {
     throw new Error(`Expected string ${field} value but received ${typeof value}.`);
   }
 
-  private parseStatus(value: unknown): InvoiceStatus {
+  private parseStatus(value: unknown): InvoiceState {
     if (typeof value === "string") {
       return this.normalizeStatus(value);
     }
@@ -352,7 +352,7 @@ export class ILNSdk {
     throw new Error("Unable to parse invoice status from contract response.");
   }
 
-  private normalizeStatus(value: string): InvoiceStatus {
+  private normalizeStatus(value: string): InvoiceState {
     const normalized = value.slice(0, 1).toUpperCase() + value.slice(1).toLowerCase();
 
     switch (normalized) {
