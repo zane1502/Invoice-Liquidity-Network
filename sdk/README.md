@@ -2,6 +2,8 @@
 
 Typed JavaScript and TypeScript SDK for the Invoice Liquidity Network Soroban contract on Stellar.
 
+By participating in this project, you agree to abide by our [Code of Conduct](../CODE_OF_CONDUCT.md).
+
 ## Install
 
 ```bash
@@ -54,6 +56,8 @@ const sdk = new ILNSdk({
 const invoice = await sdk.getInvoice(1n);
 console.log(invoice);
 ```
+
+> **Security note:** The SDK performs limited input validation and relies on the configured Soroban RPC/Horizon node and signer implementation for contract simulation, transaction preparation, and submission. See [SDK trust model](../docs/sdk-trust-model.md) for details.
 
 ## Token Amounts
 

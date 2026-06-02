@@ -5,10 +5,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Status](https://img.shields.io/badge/status-status.iln.finance-brightgreen)](https://status.iln.finance)
 
-**Turn unpaid invoices into instant liquidity on-chain, on Stellar.**
+**Turn unpaid invoices into instant liquidity on-chain, on Stellar.***********
 
 
-i just need to create a draft pr
+i just need to create a draft meaninful pr
 
 # Invoice Liquidity Network (ILN)
 
@@ -197,8 +197,10 @@ npm run test:e2e              # Run E2E integration tests
 | [`docs/notifications.md`](./docs/notifications.md) | Notification system |
 | [`docs/api-collection.md`](./docs/api-collection.md) | Horizon and Soroban RPC API collection examples |
 | [`docs/local-development.md`](./docs/local-development.md) | Local dev setup |
+| [`docs/tutorials/first-invoice.md`](./docs/tutorials/first-invoice.md) | Hands-on invoice submission tutorial |
 | [`docs/ci-cd.md`](./docs/ci-cd.md) | CI/CD and deployment environments |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | How to contribute |
+| [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) | Community standards and guidelines |
 | [`SECURITY.md`](./SECURITY.md) | Security policy |
 
 ---
