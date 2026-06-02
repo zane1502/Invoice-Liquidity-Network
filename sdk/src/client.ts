@@ -10,6 +10,7 @@ import {
   xdr,
 } from "@stellar/stellar-sdk";
 import { createLogger } from "./logger";
+import { openSSE } from "./stream";
 
 import type {
   ClaimDefaultParams,
@@ -21,6 +22,9 @@ import type {
   RpcServerLike,
   SubmitInvoiceParams,
   TransactionSigner,
+  EventCallback,
+  Unsubscribe,
+  ContractEvent,
 } from "./types";
 
 const READ_ACCOUNT = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
@@ -39,6 +43,7 @@ export class ILNSdk {
   private readonly contractId: string;
   private readonly networkPassphrase: string;
   private readonly server: RpcServerLike;
+  private readonly rpcUrl: string;
   private readonly signer?: TransactionSigner;
   private readonly logger = createLogger("invoice");
 
@@ -46,7 +51,62 @@ export class ILNSdk {
     this.contractId = config.contractId;
     this.networkPassphrase = config.networkPassphrase;
     this.server = config.server ?? new rpc.Server(config.rpcUrl);
+    this.rpcUrl = config.rpcUrl;
     this.signer = config.signer;
+  }
+
+  /**
+   * Subscribe to contract events for a specific invoice id. Returns an
+   * unsubscribe function that terminates the stream.
+   */
+  subscribeToInvoice(id: bigint | string, callback: EventCallback): Unsubscribe {
+    const invoiceId = String(id);
+    const base = this.rpcUrl.replace(/\/$/, "");
+    const url = `${base}/contracts/${this.contractId}/events?limit=200&order=asc`;
+
+    const handle = openSSE(url, (ev: ContractEvent) => {
+      try {
+        // crude filtering: check topics or value for invoice id string
+        const topics = (ev.topics ?? []) as unknown[];
+        const value = ev.value ?? "";
+        const foundInTopics = topics.some((t) => String(t).includes(invoiceId));
+        const foundInValue = String(value).includes(invoiceId);
+
+        if (foundInTopics || foundInValue) {
+          callback(ev);
+        }
+      } catch (err) {
+        // swallow
+      }
+    }, (err: Error) => {
+      if (this.logger.enabled) this.logger("invoice SSE error", { err });
+    });
+
+    return () => handle.close();
+  }
+
+  /**
+   * Subscribe to contract events related to a specific Stellar address.
+   * Returns an unsubscribe function.
+   */
+  subscribeToAddress(address: string, callback: EventCallback): Unsubscribe {
+    const base = this.rpcUrl.replace(/\/$/, "");
+    const url = `${base}/contracts/${this.contractId}/events?limit=200&order=asc`;
+
+    const handle = openSSE(url, (ev: ContractEvent) => {
+      try {
+        const topics = (ev.topics ?? []) as unknown[];
+        const value = ev.value ?? "";
+        const found = topics.some((t) => String(t).includes(address)) || String(value).includes(address);
+        if (found) callback(ev);
+      } catch (err) {
+        // swallow
+      }
+    }, (err: Error) => {
+      if (this.logger.enabled) this.logger("address SSE error", { err });
+    });
+
+    return () => handle.close();
   }
 
   async submitInvoice(params: SubmitInvoiceParams): Promise<bigint> {

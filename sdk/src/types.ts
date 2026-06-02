@@ -68,3 +68,27 @@ export interface NetworkConfig {
   rpcUrl: string;
   networkPassphrase: string;
 }
+
+/**
+ * Represents a parsed contract event from Horizon (simplified).
+ */
+export interface ContractEvent {
+  contractId: string;
+  type: string;
+  topics: unknown[];
+  value: unknown;
+  ledger: number;
+  ledgerClosedAt: string;
+  txHash: string;
+  pagingToken: string;
+}
+
+/**
+ * Callback for streaming contract events.
+ */
+export type EventCallback = (event: ContractEvent) => void | Promise<void>;
+
+/**
+ * Unsubscribe function returned from subscription methods.
+ */
+export type Unsubscribe = () => void;
