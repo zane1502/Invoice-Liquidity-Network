@@ -1,4 +1,4 @@
-import {
+﻿import {
   Account,
   Address,
   BASE_FEE,
@@ -21,6 +21,10 @@ import type {
   SubmitInvoiceParams,
   TransactionSigner,
 } from "./types";
+
+import { parseContractError } from "./errors";
+
+import { parseContractError } from "./errors";
 
 const READ_ACCOUNT = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
 const POLL_ATTEMPTS = 20;
@@ -287,14 +291,10 @@ export class ILNSdk {
       return (value as { Ok: unknown }).Ok;
     }
     if ("err" in value) {
-      throw new Error(
-        `Contract method ${method} returned an error: ${JSON.stringify((value as { err: unknown }).err)}.`,
-      );
+      throw parseContractError((value as { err: unknown }).err);
     }
     if ("Err" in value) {
-      throw new Error(
-        `Contract method ${method} returned an error: ${JSON.stringify((value as { Err: unknown }).Err)}.`,
-      );
+      throw parseContractError((value as { Err: unknown }).Err);
     }
 
     return value;
@@ -374,3 +374,5 @@ export class ILNSdk {
     return String(error);
   }
 }
+
+
