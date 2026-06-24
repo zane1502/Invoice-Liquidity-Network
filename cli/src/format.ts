@@ -96,6 +96,54 @@ export function formatProtocolConfig(config: ProtocolConfig): string {
   return lines.filter((line): line is string => line !== null).join("\n");
 }
 
+const ACTION_LABEL: Record<string, string> = {
+  freelancer: "submit",
+  payer: "pay",
+  funder: "fund",
+};
+
+export function formatHistoryTable(invoices: ListedInvoice[]): string {
+  if (invoices.length === 0) {
+    return "No history found.";
+  }
+
+  const headers = ["ID", "Action", "Status", "Amount", "Due"];
+  const rows = invoices.map((invoice) => [
+    invoice.id.toString(),
+    ACTION_LABEL[invoice.role] ?? invoice.role,
+    invoice.status,
+    formatAmount(invoice.amount),
+    formatTimestamp(invoice.dueDate).slice(0, 10),
+  ]);
+
+  const widths = headers.map((header, index) =>
+    Math.max(header.length, ...rows.map((row) => row[index].length)),
+  );
+
+  const renderRow = (cells: string[]) =>
+    cells.map((cell, index) => cell.padEnd(widths[index])).join("  ");
+
+  return [pc.bold(renderRow(headers)), ...rows.map(renderRow)].join("\n");
+}
+
+export function formatHistoryJson(invoices: ListedInvoice[]): string {
+  return JSON.stringify(
+    invoices.map((inv) => ({
+      id: inv.id.toString(),
+      action: ACTION_LABEL[inv.role] ?? inv.role,
+      status: inv.status,
+      amount: inv.amount.toString(),
+      dueDate: inv.dueDate,
+      freelancer: inv.freelancer,
+      payer: inv.payer,
+      funder: inv.funder ?? null,
+      fundedAt: inv.fundedAt ?? null,
+    })),
+    null,
+    2,
+  );
+}
+
 function row(label: string, value: string): string {
   return `${pc.bold(label.padEnd(11))} ${value}`;
 }

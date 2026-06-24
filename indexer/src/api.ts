@@ -8,6 +8,7 @@ import {
   getTopLPs,
   queryInvoices,
 } from "./db";
+import { cacheGet, cacheSet } from "./cache";
 
 /**
  * Build and return the Express application.
@@ -29,17 +30,31 @@ export function createApp(): express.Application {
   //   ?freelancer=G...
   //   ?payer=G...
   //   ?funder=G...
-  app.get("/invoices", (req: Request, res: Response) => {
+  app.get("/invoices", async (req: Request, res: Response) => {
     const { status, freelancer, payer, funder } = req.query;
 
+    const s = typeof status === "string" ? status : "";
+    const fl = typeof freelancer === "string" ? freelancer : "";
+    const pa = typeof payer === "string" ? payer : "";
+    const fu = typeof funder === "string" ? funder : "";
+    const cacheKey = `invoices:${s}:${fl}:${pa}:${fu}`;
+
+    const cached = await cacheGet(cacheKey);
+    if (cached) {
+      res.json(JSON.parse(cached));
+      return;
+    }
+
     const invoices = queryInvoices({
-      status: typeof status === "string" ? status : undefined,
-      freelancer: typeof freelancer === "string" ? freelancer : undefined,
-      payer: typeof payer === "string" ? payer : undefined,
-      funder: typeof funder === "string" ? funder : undefined,
+      status: s || undefined,
+      freelancer: fl || undefined,
+      payer: pa || undefined,
+      funder: fu || undefined,
     });
 
-    res.json({ invoices });
+    const result = { invoices };
+    await cacheSet(cacheKey, JSON.stringify(result));
+    res.json(result);
   });
 
   app.get("/stats", (_req: Request, res: Response) => {
@@ -79,11 +94,18 @@ export function createApp(): express.Application {
   });
 
   // ── GET /invoice/:id ───────────────────────────────────────────────────────
-  app.get("/invoice/:id", (req: Request, res: Response) => {
+  app.get("/invoice/:id", async (req: Request, res: Response) => {
     const id = parseInt(req.params.id, 10);
 
     if (isNaN(id) || id <= 0) {
       res.status(400).json({ error: "Invalid invoice ID - must be a positive integer" });
+      return;
+    }
+
+    const cacheKey = `invoice:${id}`;
+    const cached = await cacheGet(cacheKey);
+    if (cached) {
+      res.json(JSON.parse(cached));
       return;
     }
 
@@ -93,7 +115,9 @@ export function createApp(): express.Application {
       return;
     }
 
-    res.json({ invoice });
+    const result = { invoice };
+    await cacheSet(cacheKey, JSON.stringify(result));
+    res.json(result);
   });
 
   return app;

@@ -19,4 +19,6 @@ export const CONFIG = {
    * 0 = automatically start from (latestLedger - 1000).
    */
   startLedger: Number(process.env.START_LEDGER ?? "0"),
+  /** Optional Redis connection URL (e.g. redis://localhost:6379). Caching is disabled when unset. */
+  redisUrl: process.env.REDIS_URL,
 } as const;

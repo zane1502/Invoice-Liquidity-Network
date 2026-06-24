@@ -1,5 +1,6 @@
 import { type rpc, scValToNative } from "@stellar/stellar-sdk";
 import { hasEvent, insertEvent, upsertInvoice } from "./db";
+import { invalidateInvoiceCache } from "./cache";
 import { fetchInvoice } from "./rpc";
 import type { ILNEventType } from "./types";
 
@@ -60,5 +61,6 @@ export async function processEvent(
   const invoice = await fetchInvoice(invoiceId);
   if (invoice) {
     upsertInvoice(invoice);
+    await invalidateInvoiceCache(invoiceId);
   }
 }

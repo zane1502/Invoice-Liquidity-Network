@@ -12,6 +12,8 @@ import { decodeScValXdr, formatDecodedScVal } from "./xdr";
 import {
   createUi,
   describeConfig,
+  formatHistoryJson,
+  formatHistoryTable,
   formatInvoiceDetails,
   formatInvoiceList,
   formatProtocolConfig,
@@ -154,6 +156,73 @@ export async function runCli(
       const invoices = await client.listInvoicesByAddress(options.address);
       ui.info(formatInvoiceList(invoices));
     });
+
+  program
+    .command("history")
+    .description("Show past invoice submissions, fundings, and payments for a Stellar address.")
+    .requiredOption("--address <address>", "Stellar address to query history for")
+    .option("--id <invoiceId>", "filter to a specific invoice ID")
+    .option(
+      "--action <type>",
+      "filter by action type: submit (freelancer), fund (funder), pay (payer)",
+    )
+    .option("--limit <n>", "maximum number of results to return")
+    .option("--format <fmt>", "output format: table (default) or json", "table")
+    .action(
+      async (options: {
+        address: string;
+        id?: string;
+        action?: string;
+        limit?: string;
+        format: string;
+      }) => {
+        assertStellarAddress(options.address, "address");
+
+        if (options.format !== "table" && options.format !== "json") {
+          throw new Error("--format must be table or json");
+        }
+
+        const ACTION_TO_ROLE: Record<string, "freelancer" | "funder" | "payer"> = {
+          submit: "freelancer",
+          fund: "funder",
+          pay: "payer",
+        };
+
+        if (options.action && !ACTION_TO_ROLE[options.action]) {
+          throw new Error(
+            `--action must be one of: ${Object.keys(ACTION_TO_ROLE).join(", ")}`,
+          );
+        }
+
+        const client = createClient(load());
+        let invoices = await client.listInvoicesByAddress(options.address);
+
+        if (options.id !== undefined) {
+          const targetId = parseInvoiceId(options.id);
+          invoices = invoices.filter((inv) => inv.id === targetId);
+        }
+
+        if (options.action) {
+          const role = ACTION_TO_ROLE[options.action];
+          invoices = invoices.filter((inv) => inv.role === role);
+        }
+
+        if (options.limit !== undefined) {
+          const limit = parseInt(options.limit, 10);
+          if (isNaN(limit) || limit <= 0) {
+            throw new Error("--limit must be a positive integer");
+          }
+          invoices = invoices.slice(0, limit);
+        }
+
+        const output =
+          options.format === "json"
+            ? formatHistoryJson(invoices)
+            : formatHistoryTable(invoices);
+
+        ui.info(output);
+      },
+    );
 
   // Compatibility check command
   const compatCommand = program.command("compat").description("SDK and contract compatibility utilities");
